@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>XV Años de Camila · Galería</title>
+<style>
+  :root {
+    --vino:  #7a1f3d;
+    --oro:   #c79a3e;
+    --crema: #fbf3ea;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--crema);
+    color: var(--vino);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+  }
+
+  header {
+    text-align: center;
+    padding: 44px 20px 28px;
+  }
+
+  header .eyebrow {
+    font-size: 13px;
+    letter-spacing: 4px;
+    color: var(--oro);
+    font-weight: 600;
+  }
+
+  header h1 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-style: italic;
+    font-size: 40px;
+    color: var(--vino);
+    margin-top: 8px;
+    font-weight: 500;
+  }
+
+  header p {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #9a7b60;
+  }
+
+  .divider {
+    width: 60px;
+    height: 2px;
+    background: var(--oro);
+    margin: 18px auto 0;
+    border-radius: 2px;
+  }
+
+  #estado {
+    text-align: center;
+    padding: 40px 20px;
+    font-size: 15px;
+    color: #9a7b60;
+  }
+
+  .grid {
+    column-count: 2;
+    column-gap: 10px;
+    padding: 0 10px 60px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  @media (min-width: 640px)  { .grid { column-count: 3; } }
+  @media (min-width: 960px)  { .grid { column-count: 4; } }
+
+  .grid img {
+    width: 100%;
+    display: block;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    background: #eaddcd;
+    box-shadow: 0 2px 10px rgba(122, 31, 61, 0.10);
+    cursor: pointer;
+    break-inside: avoid;
+    transition: transform 0.15s ease;
+  }
+
+  .grid img:active { transform: scale(0.98); }
+
+  /* Visor de foto a pantalla completa */
+  #visor {
+    position: fixed;
+    inset: 0;
+    background: rgba(30, 8, 16, 0.92);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 100;
+  }
+
+  #visor.abierto { display: flex; }
+
+  #visor img {
+    max-width: 100%;
+    max-height: 90vh;
+    border-radius: 10px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  }
+
+  #cerrar {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    font-size: 34px;
+    color: var(--crema);
+    cursor: pointer;
+    line-height: 1;
+    user-select: none;
+  }
+
+  #descargar {
+    position: absolute;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--oro);
+    color: #fff;
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 12px 26px;
+    border-radius: 40px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+  }
+
+  footer {
+    text-align: center;
+    padding: 24px 20px 40px;
+    font-size: 12px;
+    color: #b79f8a;
+  }
+</style>
+</head>
+<body>
+
+  <header>
+    <div class="eyebrow">XV AÑOS</div>
+    <h1>Camila</h1>
+    <div class="divider"></div>
+    <p>Fotos de la fiesta · se actualizan solas</p>
+  </header>
+
+  <div id="estado">Cargando fotos…</div>
+  <div class="grid" id="grid"></div>
+
+  <div id="visor">
+    <span id="cerrar">&times;</span>
+    <img id="visorImg" src="" alt="Foto" />
+    <a id="descargar" href="#" download>Descargar foto</a>
+  </div>
+
+  <footer>Con cariño 💛</footer>
+
+<script>
+  // Mismos valores que usa la app de iOS (CloudinaryConfig)
+  const CLOUD_NAME = "ml3brljo";
+  const TAG        = "quincedecami";
+
+  const grid    = document.getElementById("grid");
+  const estado  = document.getElementById("estado");
+  const visor   = document.getElementById("visor");
+  const visorImg = document.getElementById("visorImg");
+
+  // Guarda los IDs ya mostrados para no duplicar al refrescar
+  const mostradas = new Set();
+
+  function urlMiniatura(id, formato) {
+    // Versión optimizada para la cuadrícula (ancho 600, buena calidad)
+    return `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/w_600,q_auto,f_auto/${id}.${formato}`;
+  }
+
+  function urlCompleta(id, formato) {
+    return `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/q_auto,f_auto/${id}.${formato}`;
+  }
+
+  function urlDescarga(id, formato) {
+    // fl_attachment fuerza la descarga del archivo original (calidad completa)
+    return `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/fl_attachment/${id}.${formato}`;
+  }
+
+  async function cargarFotos() {
+    try {
+      // Lista pública de recursos con la etiqueta. Se agrega ?t= para evitar caché.
+      const resp = await fetch(
+        `https://res.cloudinary.com/${CLOUD_NAME}/image/list/${TAG}.json?t=${Date.now()}`
+      );
+
+      if (!resp.ok) throw new Error("no-list");
+
+      const data = await resp.json();
+      const recursos = (data.resources || []);
+
+      if (recursos.length === 0 && mostradas.size === 0) {
+        estado.textContent = "Todavía no hay fotos. ¡Vuelve pronto!";
+        return;
+      }
+
+      estado.style.display = "none";
+
+      // Más recientes primero
+      recursos.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+      for (const r of recursos) {
+        if (mostradas.has(r.public_id)) continue;
+        mostradas.add(r.public_id);
+
+        const img = document.createElement("img");
+        img.src = urlMiniatura(r.public_id, r.format);
+        img.loading = "lazy";
+        img.alt = "Foto de la fiesta";
+        img.addEventListener("click", () => abrirVisor(r.public_id, r.format));
+
+        // Insertar al principio para que las nuevas aparezcan arriba
+        grid.insertBefore(img, grid.firstChild);
+      }
+    } catch (e) {
+      if (mostradas.size === 0) {
+        estado.innerHTML =
+          "No se pudo cargar la galería.<br>" +
+          "Verifica que en Cloudinary esté activada la opción " +
+          "<b>“Resource list”</b> (Settings → Security).";
+      }
+    }
+  }
+
+  const btnDescargar = document.getElementById("descargar");
+
+  function abrirVisor(id, formato) {
+    visorImg.src = urlCompleta(id, formato);
+    btnDescargar.href = urlDescarga(id, formato);
+    btnDescargar.setAttribute("download", `xv-camila-${id}.${formato}`);
+    visor.classList.add("abierto");
+  }
+
+  function cerrarVisor() {
+    visor.classList.remove("abierto");
+    visorImg.src = "";
+  }
+
+  document.getElementById("cerrar").addEventListener("click", cerrarVisor);
+  visor.addEventListener("click", (e) => { if (e.target === visor) cerrarVisor(); });
+
+  // Carga inicial y auto-actualización cada 30 segundos
+  cargarFotos();
+  setInterval(cargarFotos, 30000);
+</script>
+</body>
+</html>
