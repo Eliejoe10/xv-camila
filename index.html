@@ -14,7 +14,8 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
-    background: var(--crema);
+    background: linear-gradient(135deg, #FEE5ED 0%, #ECE2F9 50%, #FEEAD8 100%);
+    background-attachment: fixed;
     color: var(--vino);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     min-height: 100vh;
@@ -196,13 +197,21 @@
         `https://res.cloudinary.com/${CLOUD_NAME}/image/list/${TAG}.json?t=${Date.now()}`
       );
 
+      // 404 = todavía no hay fotos con esta etiqueta (galería vacía, no es error)
+      if (resp.status === 404) {
+        if (mostradas.size === 0) {
+          estado.innerHTML = "Las fotos de la fiesta aparecerán aquí muy pronto 💛";
+        }
+        return;
+      }
+
       if (!resp.ok) throw new Error("no-list");
 
       const data = await resp.json();
       const recursos = (data.resources || []);
 
       if (recursos.length === 0 && mostradas.size === 0) {
-        estado.textContent = "Todavía no hay fotos. ¡Vuelve pronto!";
+        estado.innerHTML = "Las fotos de la fiesta aparecerán aquí muy pronto 💛";
         return;
       }
 
