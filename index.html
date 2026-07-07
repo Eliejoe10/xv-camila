@@ -133,6 +133,29 @@
     padding: 12px 26px;
     border-radius: 40px;
     box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+    z-index: 2;
+  }
+
+  /* Flechas para navegar entre fotos */
+  .nav-flecha {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 40px;
+    color: rgba(255, 255, 255, 0.85);
+    cursor: pointer;
+    user-select: none;
+    padding: 10px 14px;
+    line-height: 1;
+    z-index: 2;
+  }
+
+  .nav-flecha:hover { color: #fff; }
+  #anterior { left: 6px; }
+  #siguiente { right: 6px; }
+
+  @media (max-width: 640px) {
+    .nav-flecha { font-size: 32px; }
   }
 
   footer {
@@ -157,7 +180,9 @@
 
   <div id="visor">
     <span id="cerrar">&times;</span>
+    <span id="anterior" class="nav-flecha">&#8249;</span>
     <img id="visorImg" src="" alt="Foto" />
+    <span id="siguiente" class="nav-flecha">&#8250;</span>
     <a id="descargar" href="#" download>Descargar foto</a>
   </div>
 
@@ -172,9 +197,14 @@
   const estado  = document.getElementById("estado");
   const visor   = document.getElementById("visor");
   const visorImg = document.getElementById("visorImg");
+  const btnDescargar = document.getElementById("descargar");
 
   // Guarda los IDs ya mostrados para no duplicar al refrescar
   const mostradas = new Set();
+
+  // Lista de fotos en el mismo orden que la cuadrícula (arriba = índice 0)
+  let fotos = [];
+  let indiceActual = 0;
 
   function urlMiniatura(id, formato) {
     // Versión optimizada para la cuadrícula (ancho 600, buena calidad)
@@ -228,10 +258,11 @@
         img.src = urlMiniatura(r.public_id, r.format);
         img.loading = "lazy";
         img.alt = "Foto de la fiesta";
-        img.addEventListener("click", () => abrirVisor(r.public_id, r.format));
+        img.addEventListener("click", () => abrirPorId(r.public_id));
 
         // Insertar al principio para que las nuevas aparezcan arriba
         grid.insertBefore(img, grid.firstChild);
+        fotos.unshift({ id: r.public_id, format: r.format });
       }
     } catch (e) {
       if (mostradas.size === 0) {
@@ -243,13 +274,33 @@
     }
   }
 
-  const btnDescargar = document.getElementById("descargar");
+  function abrirPorId(id) {
+    const idx = fotos.findIndex(f => f.id === id);
+    if (idx >= 0) {
+      indiceActual = idx;
+      mostrarFoto();
+      visor.classList.add("abierto");
+    }
+  }
 
-  function abrirVisor(id, formato) {
-    visorImg.src = urlCompleta(id, formato);
-    btnDescargar.href = urlDescarga(id, formato);
-    btnDescargar.setAttribute("download", `xv-camila-${id}.${formato}`);
-    visor.classList.add("abierto");
+  function mostrarFoto() {
+    const f = fotos[indiceActual];
+    if (!f) return;
+    visorImg.src = urlCompleta(f.id, f.format);
+    btnDescargar.href = urlDescarga(f.id, f.format);
+    btnDescargar.setAttribute("download", `xv-camila-${f.id}.${f.format}`);
+  }
+
+  function siguienteFoto() {
+    if (fotos.length === 0) return;
+    indiceActual = (indiceActual + 1) % fotos.length;
+    mostrarFoto();
+  }
+
+  function anteriorFoto() {
+    if (fotos.length === 0) return;
+    indiceActual = (indiceActual - 1 + fotos.length) % fotos.length;
+    mostrarFoto();
   }
 
   function cerrarVisor() {
@@ -258,7 +309,33 @@
   }
 
   document.getElementById("cerrar").addEventListener("click", cerrarVisor);
+  document.getElementById("siguiente").addEventListener("click", (e) => { e.stopPropagation(); siguienteFoto(); });
+  document.getElementById("anterior").addEventListener("click", (e) => { e.stopPropagation(); anteriorFoto(); });
+
+  // Cerrar solo al tocar el fondo oscuro (no la imagen, flechas ni botón)
   visor.addEventListener("click", (e) => { if (e.target === visor) cerrarVisor(); });
+
+  // Deslizar con el dedo (izquierda/derecha)
+  let touchStartX = null;
+  visor.addEventListener("touchstart", (e) => {
+    touchStartX = e.changedTouches[0].clientX;
+  }, { passive: true });
+  visor.addEventListener("touchend", (e) => {
+    if (touchStartX === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 40) {
+      if (dx < 0) { siguienteFoto(); } else { anteriorFoto(); }
+    }
+    touchStartX = null;
+  }, { passive: true });
+
+  // Flechas del teclado (en computadora)
+  document.addEventListener("keydown", (e) => {
+    if (!visor.classList.contains("abierto")) return;
+    if (e.key === "ArrowRight") siguienteFoto();
+    else if (e.key === "ArrowLeft") anteriorFoto();
+    else if (e.key === "Escape") cerrarVisor();
+  });
 
   // Carga inicial y auto-actualización cada 30 segundos
   cargarFotos();
