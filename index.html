@@ -63,6 +63,36 @@
     color: #9a7b60;
   }
 
+  .barra-subir {
+    text-align: center;
+    padding: 0 20px 24px;
+  }
+
+  #btnSubir {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--vino);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    padding: 14px 30px;
+    border-radius: 40px;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(122, 31, 61, 0.30);
+  }
+
+  #btnSubir:disabled { opacity: 0.6; }
+
+  #progresoSubida {
+    margin-top: 12px;
+    font-size: 14px;
+    color: var(--vino);
+    min-height: 18px;
+    font-weight: 500;
+  }
+
   .grid {
     column-count: 2;
     column-gap: 10px;
@@ -175,6 +205,12 @@
     <p>Fotos de la fiesta · se actualizan solas</p>
   </header>
 
+  <div class="barra-subir">
+    <button id="btnSubir">📸 Subir mis fotos</button>
+    <input id="inputFotos" type="file" accept="image/*" multiple hidden />
+    <div id="progresoSubida"></div>
+  </div>
+
   <div id="estado">Cargando fotos…</div>
   <div class="grid" id="grid"></div>
 
@@ -190,8 +226,9 @@
 
 <script>
   // Mismos valores que usa la app de iOS (CloudinaryConfig)
-  const CLOUD_NAME = "ml3brljo";
-  const TAG        = "camilaxv";
+  const CLOUD_NAME    = "ml3brljo";
+  const TAG           = "camilaxv";
+  const UPLOAD_PRESET = "cjwscbz6";
 
   const grid    = document.getElementById("grid");
   const estado  = document.getElementById("estado");
@@ -336,6 +373,49 @@
     else if (e.key === "ArrowLeft") anteriorFoto();
     else if (e.key === "Escape") cerrarVisor();
   });
+
+  // ---- Subida de fotos por los invitados ----
+  const btnSubir       = document.getElementById("btnSubir");
+  const inputFotos     = document.getElementById("inputFotos");
+  const progresoSubida = document.getElementById("progresoSubida");
+
+  btnSubir.addEventListener("click", () => inputFotos.click());
+  inputFotos.addEventListener("change", () => subirMisFotos(inputFotos.files));
+
+  async function subirMisFotos(archivos) {
+    if (!archivos || archivos.length === 0) return;
+
+    const total = archivos.length;
+    let hechas = 0;
+    btnSubir.disabled = true;
+    progresoSubida.textContent = `Subiendo 0 de ${total}…`;
+
+    for (const archivo of archivos) {
+      try {
+        const form = new FormData();
+        form.append("upload_preset", UPLOAD_PRESET);
+        form.append("tags", TAG);
+        form.append("file", archivo);
+
+        const resp = await fetch(
+          `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+          { method: "POST", body: form }
+        );
+        if (resp.ok) hechas++;
+      } catch (e) {
+        // Si una falla, seguimos con las demás
+      }
+      progresoSubida.textContent = `Subiendo ${hechas} de ${total}…`;
+    }
+
+    btnSubir.disabled = false;
+    inputFotos.value = "";
+    progresoSubida.textContent =
+      `¡Gracias! ${hechas} de ${total} fotos subidas 💛 Aparecerán abajo en un momento.`;
+
+    // Intentar refrescar (las fotos nuevas pueden tardar ~1 min en aparecer)
+    setTimeout(cargarFotos, 3000);
+  }
 
   // Carga inicial y auto-actualización cada 30 segundos
   cargarFotos();
