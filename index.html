@@ -227,12 +227,143 @@
     color: rgba(255,255,255,0.85);
     text-shadow: 0 1px 4px rgba(0,0,0,0.5);
   }
+
+  /* ===== Pantalla de bienvenida (igual que la app) ===== */
+  #bienvenida {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    transition: opacity 0.6s ease;
+  }
+  #bienvenida.oculto { opacity: 0; pointer-events: none; }
+
+  #bienvenida .foto {
+    position: absolute;
+    inset: 0;
+    background: url("fondo.png") center/cover no-repeat;
+    animation: zoomLento 18s ease-in-out infinite alternate;
+    z-index: 0;
+  }
+  @keyframes zoomLento {
+    from { transform: scale(1.03); }
+    to   { transform: scale(1.16); }
+  }
+  #bienvenida .velo {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,0.38), rgba(0,0,0,0.10) 42%, rgba(74,26,45,0.58));
+    z-index: 1;
+  }
+
+  #bienvenida .contenido {
+    position: relative;
+    z-index: 3;
+    text-align: center;
+    padding: 30px;
+  }
+  #bienvenida .eyebrow {
+    font-size: 13px;
+    letter-spacing: 4px;
+    color: var(--oro);
+    font-weight: 700;
+    text-shadow: 0 1px 6px rgba(0,0,0,0.75);
+  }
+  #bienvenida .sub {
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-size: 21px;
+    color: #fff;
+    margin-top: 6px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.75);
+  }
+  #bienvenida h1 {
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-size: 62px;
+    color: #fff;
+    margin: 2px 0 6px;
+    text-shadow: 0 3px 16px rgba(0,0,0,0.75);
+  }
+  #bienvenida .lineas {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    color: var(--oro); font-size: 14px;
+  }
+  #bienvenida .lineas span { width: 44px; height: 1.5px; background: var(--oro); display: inline-block; }
+  #bienvenida .frase {
+    font-size: 15px;
+    color: #fff;
+    max-width: 330px;
+    margin: 16px auto 28px;
+    line-height: 1.5;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.75);
+  }
+  #btnEntrar {
+    background: linear-gradient(180deg, #f5df99, #c79a3e);
+    color: #4a1a2c;
+    border: 1px solid rgba(255,255,255,0.7);
+    font-family: Georgia, serif;
+    font-size: 19px;
+    font-weight: 700;
+    padding: 15px 62px;
+    border-radius: 40px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+  }
+
+  .petalo {
+    position: absolute;
+    top: -24px;
+    z-index: 2;
+    border-radius: 60% 40% 60% 40%;
+    animation: caerPetalo linear infinite;
+  }
+  @keyframes caerPetalo {
+    0%   { transform: translateY(-24px) translateX(0) rotate(0deg); }
+    100% { transform: translateY(106vh) translateX(40px) rotate(260deg); }
+  }
+
+  #btnMute {
+    position: fixed;
+    top: 12px; right: 12px;
+    z-index: 150;
+    background: rgba(0,0,0,0.30);
+    color: #fff;
+    border: none;
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    font-size: 18px;
+    cursor: pointer;
+    display: none;
+  }
 </style>
 </head>
 <body>
 
+  <audio id="audio" loop preload="auto">
+    <source src="musica.m4a" type="audio/mp4" />
+  </audio>
+
+  <div id="bienvenida">
+    <div class="foto"></div>
+    <div class="velo"></div>
+    <div class="contenido">
+      <div class="eyebrow">TE DAMOS LA BIENVENIDA A</div>
+      <div class="sub">Los 15 años de</div>
+      <h1>Camila</h1>
+      <div class="lineas"><span></span>🌿<span></span></div>
+      <div class="frase">Una noche de elegancia, flores, familia y amigos para compartir lindos recuerdos</div>
+      <button id="btnEntrar">Entrar</button>
+    </div>
+  </div>
+
+  <button id="btnMute">🔊</button>
+
   <header>
-    <div class="eyebrow">LOS QUINCE AÑOS DE</div>
+    <div class="eyebrow">LOS 15 AÑOS DE</div>
     <h1>Camila</h1>
     <div class="divider"></div>
     <p>Fotos de la fiesta · se actualizan solas</p>
@@ -449,6 +580,45 @@
     // Intentar refrescar (las fotos nuevas pueden tardar ~1 min en aparecer)
     setTimeout(cargarFotos, 3000);
   }
+
+  // ---- Bienvenida + música ----
+  const bienvenida = document.getElementById("bienvenida");
+  const audio      = document.getElementById("audio");
+  const btnMute    = document.getElementById("btnMute");
+  let silenciado = false;
+
+  document.getElementById("btnEntrar").addEventListener("click", () => {
+    bienvenida.classList.add("oculto");
+    btnMute.style.display = "block";
+    audio.volume = 0.4;
+    audio.play().catch(() => {}); // el toque del botón permite reproducir
+    setTimeout(() => { bienvenida.style.display = "none"; }, 600);
+  });
+
+  btnMute.addEventListener("click", () => {
+    silenciado = !silenciado;
+    audio.muted = silenciado;
+    btnMute.textContent = silenciado ? "🔇" : "🔊";
+  });
+
+  // Pétalos cayendo en la bienvenida
+  (function () {
+    const colores = [
+      "rgba(244,200,215,0.9)", "rgba(212,194,240,0.9)",
+      "rgba(252,247,240,0.9)", "rgba(232,186,197,0.9)"
+    ];
+    for (let i = 0; i < 14; i++) {
+      const p = document.createElement("div");
+      p.className = "petalo";
+      p.style.left = (Math.random() * 100) + "%";
+      p.style.background = colores[i % colores.length];
+      p.style.width = (10 + Math.random() * 8) + "px";
+      p.style.height = (7 + Math.random() * 5) + "px";
+      p.style.animationDuration = (6 + Math.random() * 6) + "s";
+      p.style.animationDelay = (Math.random() * 6) + "s";
+      bienvenida.appendChild(p);
+    }
+  })();
 
   // Carga inicial y auto-actualización cada 30 segundos
   cargarFotos();
